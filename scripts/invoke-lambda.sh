@@ -91,32 +91,24 @@ fi
 # Check if event file exists
 if [ ! -f "$EVENT_FILE" ]; then
   echo "Warning: Event file not found: $EVENT_FILE"
-  echo "Using default empty event: {}"
-  EVENT_PAYLOAD='{"source":"aws.events"}'
+  echo "Using default event: {\"source\":\"aws.events\"}"
+  EVENT_FILE=$(mktemp)
+  echo '{"source":"aws.events"}' > "$EVENT_FILE"
 else
   echo "Using event file: $EVENT_FILE"
-  EVENT_PAYLOAD="file://$EVENT_FILE"
 fi
 
 # Invoke the function
 echo "Invoking function..."
 RESPONSE_FILE=$(mktemp)
 
-if [ "$EVENT_PAYLOAD" = '{"source":"aws.events"}' ]; then
-  aws lambda invoke \
-    --function-name "$FUNCTION_NAME" \
-    --region "$REGION" \
-    --payload "$EVENT_PAYLOAD" \
-    "$RESPONSE_FILE" \
-    > /dev/null
-else
-  aws lambda invoke \
-    --function-name "$FUNCTION_NAME" \
-    --region "$REGION" \
-    --payload "$EVENT_PAYLOAD" \
-    "$RESPONSE_FILE" \
-    > /dev/null
-fi
+# fileb:// sends the file as raw bytes (file:// is treated as base64 by AWS CLI v2)
+aws lambda invoke \
+  --function-name "$FUNCTION_NAME" \
+  --region "$REGION" \
+  --payload "fileb://$EVENT_FILE" \
+  "$RESPONSE_FILE" \
+  > /dev/null
 
 # Check if jq is available for pretty printing
 if command -v jq &> /dev/null; then

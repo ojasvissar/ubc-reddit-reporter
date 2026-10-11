@@ -1,0 +1,7 @@
+# Local development and CI (not deployed)
+-r src/requirements.txt
+pandas>=2.0
+pyarrow>=14.0
+pytest>=7.4.0
+pytest-mock>=3.11.1
+flake8>=7.0

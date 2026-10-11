@@ -1,0 +1,208 @@
+{
+  "id": "UBC_2026_10_11_2026_10_04",
+  "source": "classifications/UBC_2026_10_11_2026_10_04.parquet",
+  "subreddit": "UBC",
+  "period_start": "2026-10-04",
+  "period_end": "2026-10-11",
+  "generated_at": "2026-10-11T09:14:00+00:00",
+  "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "total_posts": 214,
+  "unclassified_posts": 6,
+  "categories": {
+    "Computer Science": {
+      "post_count": 38,
+      "summary": "Midterm season dominated CS discussion. CPSC 110 students were frustrated by the length of the first midterm, with many saying the worked-example problems in lecture did not prepare them for the recursion-heavy final question, while others shared that the practice exams on the course site were the closest match. CPSC 221 students asked whether the PrairieLearn autograder outage before the PA1 deadline would earn an extension (a TA later confirmed 24 hours). Upper-year students compared CPSC 310 project teams, with recurring complaints about uneven contribution and advice to set up a team contract early, and several threads asked how competitive CPSC 4xx waitlists are for winter term 2.",
+      "top_posts": [
+        {
+          "title": "CPSC 110 midterm was brutal \u2014 how did everyone feel?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 87
+        },
+        {
+          "title": "PrairieLearn down before CPSC 221 PA1 deadline",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 54
+        },
+        {
+          "title": "CPSC 310 group not contributing, what do I do",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 41
+        },
+        {
+          "title": "Is it realistic to get off the CPSC 440 waitlist?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 23
+        },
+        {
+          "title": "Best way to study for 121 proofs?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 19
+        }
+      ]
+    },
+    "Housing and Residence": {
+      "post_count": 31,
+      "summary": "Housing posts focused on the cost and availability of off-campus rentals near UBC. Students described viewings in Kitsilano and Point Grey with dozens of applicants and rents above $1,300 for a shared room, and several warned about deposit scams on Facebook Marketplace asking for e-transfers before a viewing. On campus, residents of Orchard Commons and Brock Commons reported slow maintenance responses for heating and laundry machines, and first-years asked whether it is worth staying on the Year Round Housing waitlist for January.",
+      "top_posts": [
+        {
+          "title": "Got scammed on a sublet deposit \u2014 PSA",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 73
+        },
+        {
+          "title": "Kits rentals are insane right now",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 49
+        },
+        {
+          "title": "Orchard heating still broken after 2 weeks",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 38
+        },
+        {
+          "title": "YRH waitlist movement for January?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 22
+        }
+      ]
+    },
+    "Admin and Logistics": {
+      "post_count": 27,
+      "summary": "Administrative questions centred on the upcoming Workday course registration window for term 2 and confusion over how the new degree-planning tool shows requirements. Several students reported that their U-Pass did not renew on the Compass card and shared the fix through the AMS help desk. Others asked about the deadline to drop a course with a W standing, tuition payment timing for international students, and whether the SSC is still accessible for transcript requests.",
+      "top_posts": [
+        {
+          "title": "Workday registration time for T2 \u2014 when do we find out?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 44
+        },
+        {
+          "title": "U-Pass not renewing on Compass",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 39
+        },
+        {
+          "title": "Last day to drop with a W?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 26
+        }
+      ]
+    },
+    "Mental Health and Wellbeing": {
+      "post_count": 24,
+      "summary": "Students described burnout as midterms overlapped with lab reports and part-time work, with several first-years saying they felt isolated and unsure how to make friends after Imagine Day. Commenters recommended UBC Counselling's same-day appointments, the Wellness Centre peer support drop-ins and the Empower Me line, while some noted long wait times for ongoing counselling. A thread on sleep and study habits drew practical advice about blocking study time and taking weekends off.",
+      "top_posts": [
+        {
+          "title": "Feeling really lonely in first year",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 66
+        },
+        {
+          "title": "Burnt out and it's only October",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 52
+        },
+        {
+          "title": "How long is the wait for UBC Counselling?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 21
+        }
+      ]
+    },
+    "Career": {
+      "post_count": 22,
+      "summary": "Co-op and internship recruiting drove career posts. Engineering and Science co-op students compared interview counts from the fall cycle, and many reported few responses for summer 2027 software roles, prompting advice to tailor resumes and apply to smaller Vancouver companies. Others asked how to prepare for technical interviews, whether the Career Centre resume reviews are worth booking, and how to approach professors about undergraduate research (URA/USRA) positions.",
+      "top_posts": [
+        {
+          "title": "0 interviews from co-op round 1, is this normal?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 58
+        },
+        {
+          "title": "How I landed a USRA as a second year",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 34
+        },
+        {
+          "title": "Are Career Centre resume reviews useful?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 17
+        }
+      ]
+    },
+    "Social": {
+      "post_count": 19,
+      "summary": "Social posts were mostly people looking for community: students asked for clubs that welcome beginners (hiking, climbing, board games), shared the AMS Block Party lineup reactions, and organised meetups for transfer students. A few threads discussed how hard it is to keep up friendships from first year once schedules diverge.",
+      "top_posts": [
+        {
+          "title": "Clubs for people who don't know anyone?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 47
+        },
+        {
+          "title": "Transfer students meetup this Friday",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 18
+        }
+      ]
+    },
+    "Campus Spaces": {
+      "post_count": 17,
+      "summary": "Students compared the best quiet study spots during midterms, with IKB and Koerner described as overcrowded and the Forestry building and Chan Centre lobby recommended as alternatives. Others reported the Nest food court lines at lunch, broken elevators in Buchanan, and asked when the new gym hours start.",
+      "top_posts": [
+        {
+          "title": "Underrated study spots that aren't IKB",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 61
+        },
+        {
+          "title": "Buchanan elevator out again",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 14
+        }
+      ]
+    },
+    "Math and Statistics": {
+      "post_count": 14,
+      "summary": "MATH 100 and MATH 180 students asked for help with limits and related-rates questions ahead of midterm 2, and many recommended the Math Learning Centre drop-ins. STAT 200 students were confused about the difference between confidence intervals and hypothesis tests on the WeBWorK assignment.",
+      "top_posts": [
+        {
+          "title": "MATH 100 midterm 2 tips?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 29
+        },
+        {
+          "title": "STAT 200 CI vs hypothesis test explained",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 12
+        }
+      ]
+    },
+    "Rants": {
+      "post_count": 11,
+      "summary": "Complaints focused on the 99 B-Line pass-ups during morning rush, bike theft outside the Nest, and the construction noise near the Bus Loop.",
+      "top_posts": [
+        {
+          "title": "99 passed me three times this morning",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 45
+        },
+        {
+          "title": "Bike stolen from Nest rack in broad daylight",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 31
+        }
+      ]
+    },
+    "Advice and Tips": {
+      "post_count": 5,
+      "summary": "Upper-year students shared advice on balancing five courses with a part-time job, and recommended using office hours early rather than right before exams.",
+      "top_posts": [
+        {
+          "title": "What I wish I knew in first year",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 40
+        }
+      ]
+    }
+  }
+}

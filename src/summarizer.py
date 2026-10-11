@@ -1,76 +1,57 @@
-import os
-import io
 import json
+import os
 import logging
-from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any
+import re
+from datetime import datetime, timezone
+from typing import Dict, Any, List, Optional
 
-import boto3
-import pandas as pd
 import numpy as np
-from tqdm import tqdm
-from jinja2 import Template
-from pydantic import BaseModel, Field
+import pandas as pd
 
-
-from reddit_fetcher import fetch_reddit_posts
-from llm_classifier import classify_text
+from common import (
+    CLASSIFIED_PREFIX,
+    LATEST_SUMMARY_KEY,
+    SUMMARY_PREFIX,
+    basename,
+    invoke_model,
+    list_keys,
+    read_parquet,
+    render_prompt,
+    write_text,
+)
 
 # ================== Logging ==================
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
 
-tqdm.pandas()
-
-# ================== AWS S3 ==================
-s3_client = boto3.client("s3")
-bedrock_client = boto3.client('bedrock-runtime', region_name=os.environ.get("BEDROCK_REGION", os.environ.get("AWS_REGION", "us-east-1")))
+# ================== Config ==================
 bucket_name = os.environ.get("BUCKET_NAME")
-bedrock_region = os.environ.get("BEDROCK_REGION", os.environ.get("AWS_REGION", "us-east-1"))
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+MAX_POST_CHARS = 3000
+# Upper bound on the posts text sent per category; lower it for small-context models
+MAX_PROMPT_CHARS = int(os.environ.get("MAX_PROMPT_CHARS", "400000"))
+TOP_POSTS_PER_CATEGORY = 5
 
-# ================== Folders ==================
-OUTPUT_FOLDER = Path("reddit_data")
-CLASSIFIED_FOLDER = Path("reddit_data_classified")
-SUMMARY_OUTPUT_FOLDER = Path("summaries")
-PROMPTS_DIR = Path("prompts")
+# Category (as produced by the analyzer) -> summary prompt in src/prompts/
+CATEGORY_PROMPTS = {
+    "Computer Science": "Computer_Science.jinja",
+    "Math and Statistics": "Math_and_Statistics.jinja",
+    "General Sciences": "General_Sciences.jinja",
+    "Arts and Humanities": "Arts_and_Humanities.jinja",
+    "Business and Econ": "Business_and_Econ.jinja",
+    "General Academics": "General_Academics.jinja",
+    "Advice and Tips": "Advice_and_Tips.jinja",
+    "Social": "Social_Events.jinja",
+    "Rants": "Rants_and_Complaints.jinja",
+    "Mental Health and Wellbeing": "Mental_Health_and_Wellbeing.jinja",
+    "Housing and Residence": "Housing_and_Residence.jinja",
+    "Campus Spaces": "Campus_Spaces.jinja",
+    "Career": "Career.jinja",
+    "Admin and Logistics": "Admin_and_Logistics.jinja",
+}
 
-OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
-CLASSIFIED_FOLDER.mkdir(exist_ok=True, parents=True)
-SUMMARY_OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
-# ================== LLM & Output Models ==================
-class SummaryResponse(BaseModel):
-    summary: str = Field(description="A concise summary of the posts for the given category.")
-
-# ================== LLM Initialization =================
-def invoke_bedrock_model(prompt: str, model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0") -> str:
-    """Invoke Bedrock model directly with boto3."""
-    if model_id.startswith("anthropic.claude"):
-        body = json.dumps({
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 1000,
-            "messages": [{"role": "user", "content": prompt}]
-        })
-    else:
-        body = json.dumps({"prompt": prompt, "max_gen_len": 1000})
-    
-    response = bedrock_client.invoke_model(
-        modelId=model_id,
-        body=body,
-        contentType="application/json"
-    )
-    
-    result = json.loads(response['body'].read())
-    
-    if model_id.startswith("anthropic.claude"):
-        return result['content'][0]['text']
-    elif model_id.startswith("meta.llama"):
-        return result['generation']
-    else:
-        return str(result)
-
-# ================== Helper Functions =================
+# ================== Formatting ==================
 def format_comments(comments) -> str:
     if comments is None or (isinstance(comments, float) and np.isnan(comments)):
         return "No comments"
@@ -80,7 +61,7 @@ def format_comments(comments) -> str:
         if len(comments) == 0:
             return "No comments"
         formatted = []
-        for i, comment in enumerate(comments[:10], 1):
+        for comment in comments[:10]:
             if isinstance(comment, dict):
                 comment_text = comment.get("text", comment.get("body", str(comment)))
             else:
@@ -94,132 +75,183 @@ def format_comments(comments) -> str:
         return "\n".join(formatted)
     return str(comments)[:500]
 
-def format_posts_for_prompt(df: pd.DataFrame, category: str, title_col="Title",
-                           content_col="Post_Text", comments_col="Comments") -> str:
-    category_posts = df[df['category'] == category].copy()
-    if len(category_posts) == 0:
-        return ""
-    posts_list = []
-    for idx, row in category_posts.iterrows():
-        title = row.get(title_col, "No title")
-        content = row.get(content_col, "No content") if pd.notna(row.get(content_col)) else "No content"
-        comments = format_comments(row.get(comments_col))
-        post_text = f"""Post {len(posts_list) + 1}:
-Title: {title}
-Content: {content}
-Comments:
-{comments}"""
-        posts_list.append(post_text)
-    return "\n\n" + "\n\n---\n\n".join(posts_list)
 
-def render_prompt(prompt_file: str, posts_data: str) -> str:
-    with open(prompt_file, "r", encoding="utf-8") as f:
-        template = Template(f.read())
-    return template.render(posts=posts_data)
-
-def summarize_posts(posts_data: str, model_id: str, prompt_file: str) -> SummaryResponse:
-    rendered_prompt = render_prompt(prompt_file, posts_data)
-    full_prompt = f"{rendered_prompt}\n\nRespond with JSON format: {{\"summary\": \"text\"}}"
-    output_text = invoke_bedrock_model(full_prompt, model_id)
-    try:
-        result = json.loads(output_text.strip())
-        return SummaryResponse(summary=result.get("summary", output_text.strip()))
-    except Exception:
-        return SummaryResponse(summary=output_text.strip())
-
-# ================== S3 Utilities =================
-def list_parquet_files_from_s3(bucket: str, prefix: str = "raw_data/"):
-    paginator = s3_client.get_paginator("list_objects_v2")
-    files = []
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            if obj["Key"].endswith(".parquet"):
-                files.append(obj["Key"])
-    return files
-
-def read_parquet_from_s3(bucket: str, key: str) -> pd.DataFrame:
-    response = s3_client.get_object(Bucket=bucket, Key=key)
-    buffer = io.BytesIO(response["Body"].read())
-    return pd.read_parquet(buffer, engine="pyarrow")
-
-def write_text_to_s3(text: str, bucket: str, key: str):
-    s3_client.put_object(Bucket=bucket, Key=key, Body=text.encode("utf-8"))
-    logger.info(f"Saved text summary to s3://{bucket}/{key}")
-
-# ================== Reddit Fetch & Classify =================
-def get_parquet_filename(subreddit: str, start_date: datetime, end_date: datetime):
-    start_str = start_date.strftime("%Y_%m_%d")
-    end_str = end_date.strftime("%Y_%m_%d")
-    return f"{subreddit}_{end_str}_{start_str}.parquet"
-
-def classify_posts(df: pd.DataFrame, llm_model, title_col="Title", content_col="Post_Text"):
-    if 'category' not in df.columns or df['category'].isnull().all():
-        tqdm.pandas()
-        combined_texts = (df[title_col].fillna('') + ". " + df[content_col].fillna('')).str.strip()
-        df['category'] = combined_texts.progress_apply(
-            lambda t: classify_text(content=t, llm_model=llm_model, prompt_file=str(PROMPTS_DIR / "classify_post.jinja")).category
+def format_posts_for_prompt(posts: pd.DataFrame) -> str:
+    """Render a category's posts as numbered blocks, stopping at MAX_PROMPT_CHARS."""
+    blocks = []
+    total_chars = 0
+    for _, row in posts.iterrows():
+        title = row.get("Title")
+        title = title if isinstance(title, str) and title.strip() else "No title"
+        content = row.get("Post_Text")
+        content = content[:MAX_POST_CHARS] if isinstance(content, str) and content.strip() else "No content"
+        block = (
+            f"Post {len(blocks) + 1}:\n"
+            f"Title: {title}\n"
+            f"Content: {content}\n"
+            f"Comments:\n{format_comments(row.get('Comments'))}"
         )
-    return df
+        if blocks and total_chars + len(block) > MAX_PROMPT_CHARS:
+            logger.warning(f"Prompt limit reached; summarizing {len(blocks)} of {len(posts)} posts")
+            break
+        blocks.append(block)
+        total_chars += len(block)
+    return "\n\n---\n\n".join(blocks)
 
-# ================== Main Processing =================
-def process_all_data(subreddit: str = "ubc", days_back: int = 7, llm_model=None):
-    today = datetime.now(timezone.utc)
-    old = today - timedelta(days=days_back)
 
-    parquet_file = OUTPUT_FOLDER / get_parquet_filename(subreddit, old, today)
-    classified_file = CLASSIFIED_FOLDER / parquet_file.name
+def summarize_category(posts: pd.DataFrame, prompt_file: str, model_id: str = BEDROCK_MODEL_ID) -> str:
+    prompt = render_prompt(prompt_file, posts=format_posts_for_prompt(posts))
+    return invoke_model(prompt, model_id, max_tokens=2000)
 
-    # Fetch Reddit data
-    if parquet_file.exists():
-        df = pd.read_parquet(parquet_file)
-    else:
-        df = fetch_reddit_posts([subreddit], days_back=days_back, manual_date=today, output_folder=str(OUTPUT_FOLDER))
-        df.to_parquet(parquet_file, index=False)
 
-    # Classify posts
-    if llm_model is None:
-        llm_model = get_ollama_model()
-    df = classify_posts(df, llm_model)
-    df.to_parquet(classified_file, index=False)
+def build_report(summaries: Dict[str, Dict[str, Any]], source_key: str) -> str:
+    total_posts = sum(s["post_count"] for s in summaries.values())
+    lines = [
+        "UBC Reddit Weekly Summary",
+        f"Source: {basename(source_key)} ({total_posts} categorized posts)",
+        "",
+    ]
+    for category, entry in summaries.items():
+        lines.append(f"{category} ({entry['post_count']} posts)")
+        lines.append(entry["summary"])
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
 
-    # Summarize per category
-    category_prompt_map = {
-        "Computer Science": "Computer_Science.jinja",
-        "Social": "Social_Events.jinja",
-        "General Academics": "General_Academics.jinja",
-        "General Sciences": "General_Sciences.jinja",
-        "Mental Health and Wellbeing": "Mental_Health_and_Wellbeing.jinja",
-        "Math and Statistics": "Math_and_Statistics.jinja",
-        "Campus Spaces": "Campus_Spaces.jinja",
-        "Career": "Career.jinja",
-        "Business and Econ": "Business_and_Econ.jinja",
-        "Housing and Residence": "Housing_and_Residence.jinja",
-        "Admin and Logistics": "Admin_and_Logistics.jinja",
-        "Arts and Humanities": "Arts_and_Humanities.jinja",
-        "Rants": "Rants_and_Complaints.jinja",
-        "Advice and Tips": "Advice_and_Tips.jinja",
+
+def _comment_count(comments) -> int:
+    if isinstance(comments, (list, np.ndarray)):
+        return len(comments)
+    return 0
+
+
+def top_posts(posts: pd.DataFrame, limit: int = TOP_POSTS_PER_CATEGORY) -> List[Dict[str, Any]]:
+    """The most-discussed posts in a category, for linking from the report."""
+    ranked = posts.assign(_comments=posts.get("Comments", pd.Series(dtype=object)).map(_comment_count))
+    ranked = ranked.sort_values("_comments", ascending=False, kind="stable").head(limit)
+    return [
+        {
+            "title": str(row.get("Title") or "Untitled"),
+            "url": row.get("Post_URL") if isinstance(row.get("Post_URL"), str) else None,
+            "comments": int(row["_comments"]),
+        }
+        for _, row in ranked.iterrows()
+    ]
+
+
+def parse_run_name(run_name: str) -> Dict[str, Optional[str]]:
+    """'UBC_2026_10_11_2026_10_04' -> subreddit and ISO period dates."""
+    match = re.match(r"^(.+)_(\d{4})_(\d{2})_(\d{2})_(\d{4})_(\d{2})_(\d{2})$", run_name)
+    if not match:
+        return {"subreddit": None, "period_start": None, "period_end": None}
+    g = match.groups()
+    return {
+        "subreddit": g[0],
+        "period_end": f"{g[1]}-{g[2]}-{g[3]}",
+        "period_start": f"{g[4]}-{g[5]}-{g[6]}",
     }
 
-    from summary_pipeline import process_all_prompts  # your existing summarization code
-    summaries = process_all_prompts(
-        df=df,
-        category_prompt_map=category_prompt_map,
-        prompts_dir=str(PROMPTS_DIR),
-        llm_model=llm_model,
-        output_dir=str(SUMMARY_OUTPUT_FOLDER),
-        verbose=False
-    )
-    return summaries
+
+# ================== Main Processing ==================
+def latest_classification_key() -> Optional[str]:
+    objects = list_keys(bucket_name, CLASSIFIED_PREFIX, ".parquet")
+    return objects[-1]["Key"] if objects else None
+
+
+def summarize_file(classified_key: str) -> Dict[str, Any]:
+    df = read_parquet(bucket_name, classified_key)
+    if "category" not in df.columns:
+        raise ValueError(f"{classified_key} has no 'category' column; run the analyzer first")
+
+    summaries: Dict[str, Dict[str, Any]] = {}
+    failed = []
+    for category, prompt_file in CATEGORY_PROMPTS.items():
+        posts = df[df["category"] == category]
+        if posts.empty:
+            continue
+        try:
+            summary = summarize_category(posts, prompt_file)
+        except Exception as e:
+            logger.error(f"Failed to summarize category {category}: {e}", exc_info=True)
+            failed.append(category)
+            continue
+        summaries[category] = {
+            "post_count": int(len(posts)),
+            "summary": summary,
+            "top_posts": top_posts(posts),
+        }
+
+    if not summaries:
+        raise RuntimeError(f"No categories could be summarized from {classified_key} (failed: {failed})")
+
+    report = build_report(summaries, classified_key)
+    run_name = basename(classified_key).removesuffix(".parquet")
+    json_key = f"{SUMMARY_PREFIX}{run_name}.json"
+    text_key = f"{SUMMARY_PREFIX}{run_name}.txt"
+
+    report_json = {
+        "id": run_name,
+        "source": classified_key,
+        **parse_run_name(run_name),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "model": BEDROCK_MODEL_ID,
+        "total_posts": int(len(df)),
+        "unclassified_posts": int((~df["category"].isin(list(CATEGORY_PROMPTS))).sum()),
+        "categories": summaries,
+    }
+    write_text(json.dumps(report_json, indent=2), bucket_name, json_key, content_type="application/json")
+    write_text(report, bucket_name, text_key)
+    # The emailer always sends the most recent report
+    write_text(report, bucket_name, LATEST_SUMMARY_KEY)
+
+    return {
+        "source": classified_key,
+        "categories_summarized": list(summaries),
+        "categories_failed": failed,
+        "s3_keys": [json_key, text_key, LATEST_SUMMARY_KEY],
+    }
+
 
 # ================== Lambda Handler =================
-def lambda_handler(event: Dict[str, Any], context: Any):
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
-    summaries = process_all_data(subreddit="ubc", days_back=7, model_id=model_id)
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "status": "success",
-            "summaries": summaries,
-            "timestamp": datetime.utcnow().isoformat()
-        }, indent=2)
-    }
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """
+    Summarize classified posts per category using a Bedrock model.
+
+    Optional event fields:
+      key (str): classified parquet key to summarize (default: most recent one)
+    """
+    try:
+        logger.info(f"Event received: {json.dumps(event)}")
+        if not bucket_name:
+            raise ValueError("BUCKET_NAME environment variable not set")
+
+        classified_key = event.get("key") or latest_classification_key()
+        if not classified_key:
+            return {
+                "statusCode": 404,
+                "body": json.dumps({
+                    "status": "error",
+                    "message": f"No classified files found under {CLASSIFIED_PREFIX}; run the analyzer first",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+            }
+
+        result = summarize_file(classified_key)
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "status": "success",
+                **result,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }, indent=2)
+        }
+
+    except Exception as e:
+        logger.error(f"Error in lambda_handler: {str(e)}", exc_info=True)
+        return {
+            "statusCode": 500,
+            "body": json.dumps({
+                "status": "error",
+                "message": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        }

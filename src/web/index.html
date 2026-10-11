@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UBC Reddit Reporter</title>
+<meta name="description" content="Weekly AI summaries of what UBC students are talking about on r/UBC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=VT323&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23E2231A'/%3E%3Cpath d='M2 1h1v5H2zM5 1h1v5H5zM3 5h2v1H3z' fill='%230A0A0A'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --page: #E2231A;
+    --stage: #E2231A;
+    --panel: #0A0A0A;
+    --paper: #F3EFE6;
+    --muted: #9C978E;
+    --line: #2B2B2B;
+    --accent: #E2231A;
+    --on-accent: #0A0A0A;
+    --display: "VT323", ui-monospace, Menlo, monospace;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --cut: 56px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --page: #160605; }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--paper);
+    font: 400 14px/1.6 var(--mono);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--paper); outline-offset: 2px; }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: clamp(16px, 4vw, 56px) 16px; display: grid; gap: clamp(16px, 3vw, 32px); }
+  .frame { background: var(--panel); padding: 6px; }
+  .wrap > *, .split > *, .hero > * { min-width: 0; }
+
+  /* ---------- labels ---------- */
+  .label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+  .muted { color: var(--muted); }
+
+  /* ---------- nav ---------- */
+  .nav { display: flex; align-items: center; gap: 24px; padding: 10px 14px 14px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 500; font-size: 13px; letter-spacing: .02em; }
+  .brand svg { width: 18px; height: 18px; display: block; }
+  .nav ul { list-style: none; margin: 0 auto; padding: 0; display: flex; gap: 28px; }
+  .nav ul a { text-decoration: none; color: var(--muted); }
+  .nav ul a:hover { color: var(--paper); }
+  .live { display: flex; align-items: center; gap: 8px; }
+  .live i { width: 7px; height: 7px; background: var(--accent); display: inline-block; animation: blink 1.6s steps(1) infinite; }
+
+  /* ---------- hero ---------- */
+  .hero { background: var(--stage); display: grid; grid-template-columns: 1fr 1fr; padding: 10px; gap: 10px; min-height: 560px; }
+  .stage { position: relative; color: var(--on-accent); display: grid; grid-template-rows: auto 1fr auto; padding: 14px 18px; }
+  .stage .corner { position: absolute; width: 11px; height: 11px; }
+  .stage .corner::before, .stage .corner::after { content: ""; position: absolute; background: var(--on-accent); }
+  .stage .corner::before { left: 5px; top: 0; width: 1px; height: 11px; }
+  .stage .corner::after { top: 5px; left: 0; height: 1px; width: 11px; }
+  .corner.tl { top: 10px; left: 10px; } .corner.tr { top: 10px; right: 10px; }
+  .corner.bl { bottom: 10px; left: 10px; } .corner.br { bottom: 10px; right: 10px; }
+  .stage-top { text-align: center; }
+  .icon { width: min(34%, 190px); aspect-ratio: 1; place-self: center; display: block; }
+  .icon rect { fill: var(--on-accent); }
+  .icon.drawing rect { animation: pixel .28s steps(1) both; }
+  .pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; padding: 0 24px; }
+  .pager button { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .08em; opacity: .55; }
+  .pager button::before { content: ""; width: 6px; height: 6px; border: 1px solid currentColor; }
+  .pager button[aria-current="true"] { opacity: 1; }
+  .pager button[aria-current="true"]::before { background: currentColor; }
+  .pager button:hover { opacity: 1; }
+
+  .card {
+    background: var(--panel);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+    padding: 26px 28px 22px;
+    display: flex; flex-direction: column; gap: 18px;
+    min-width: 0;
+  }
+  .headline { font: 400 clamp(46px, 6.2vw, 86px)/.86 var(--display); text-transform: uppercase; margin: 0; letter-spacing: .01em; overflow-wrap: anywhere; }
+  .meta { display: flex; gap: 16px; flex-wrap: wrap; }
+  .summary { margin: 0; max-width: 62ch; font-size: 13.5px; line-height: 1.7; color: #D9D4CA; }
+  .list-title { margin-top: 4px; }
+  .posts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .posts li { border-bottom: 1px solid var(--line); }
+  .posts a, .posts span.row {
+    display: grid; grid-template-columns: 3.2em 1fr auto; gap: 10px; align-items: baseline;
+    padding: 8px 0; text-decoration: none; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .posts a:hover .t { text-decoration: underline; text-underline-offset: 3px; }
+  .posts .n { color: var(--muted); }
+  .posts .c { color: var(--muted); white-space: nowrap; }
+  .card-foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; padding-right: calc(var(--cut) - 8px); gap: 16px; }
+  .counter { font: 400 clamp(56px, 6vw, 80px)/.8 var(--display); }
+  .counter.total { margin-left: auto; }
+  .arrows { display: flex; gap: 8px; padding-bottom: 6px; }
+  .arrows button { width: 36px; height: 36px; border: 1px solid var(--line); display: grid; place-items: center; font-size: 16px; }
+  .arrows button:hover:not(:disabled) { border-color: var(--paper); }
+  .arrows button:disabled { opacity: .3; cursor: default; }
+  .cursor::after { content: "_"; animation: blink 1s steps(1) infinite; }
+  .retry { align-self: flex-start; border: 1px solid var(--paper); padding: 8px 14px; }
+  .steps { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+  .steps li { border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; display: grid; grid-template-columns: 3.2em 1fr; }
+  .steps code { font: inherit; color: var(--muted); text-transform: none; letter-spacing: 0; }
+
+  /* ---------- sections ---------- */
+  .section-head { display: flex; justify-content: space-between; gap: 16px; padding: 10px 14px 14px; flex-wrap: wrap; }
+  .section-body { border-top: 1px solid var(--line); padding: 22px 20px 26px; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 3vw, 32px); }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .tile { background: var(--panel); padding: 14px 16px 16px; min-width: 0; }
+  .tile .v { font: 400 clamp(40px, 5vw, 64px)/.9 var(--display); margin-top: 10px; overflow-wrap: anywhere; }
+  .tile .v.text { font-size: clamp(28px, 3.2vw, 40px); text-transform: uppercase; }
+
+  .dist { margin-top: 26px; display: grid; gap: 2px; }
+  .bar-row { display: grid; grid-template-columns: minmax(130px, 220px) 1fr 3.5em; gap: 14px; align-items: center; padding: 5px 0; width: 100%; text-align: left; }
+  .bar-row .name { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-row .track { height: 14px; position: relative; }
+  .bar-row .fill {
+    height: 100%; min-width: 4px;
+    background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 8px);
+  }
+  .bar-row .count { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar-row:hover .name, .bar-row[aria-current="true"] .name { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
+  .bar-row:hover .fill { background: repeating-linear-gradient(90deg, var(--paper) 0 6px, transparent 6px 8px); }
+  .bar-row .name { color: #CFCAC0; }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 10; background: var(--paper); color: var(--panel);
+    padding: 6px 9px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+    transform: translate(-50%, calc(-100% - 10px)); opacity: 0; transition: opacity .1s;
+  }
+  .tooltip.show { opacity: 1; }
+
+  .rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .rows li { border-bottom: 1px solid var(--line); }
+  .rows button, .rows .row {
+    width: 100%; display: grid; grid-template-columns: 3.2em 1fr auto; gap: 10px; align-items: baseline; text-align: left;
+    padding: 10px 0; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .rows button:hover .t { text-decoration: underline; text-underline-offset: 3px; }
+  .rows button[aria-current="true"] .t::after { content: "  ◀ VIEWING"; color: var(--accent); }
+  .rows .n, .rows .r { color: var(--muted); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; }
+  .chip::before { content: ""; width: 6px; height: 6px; background: currentColor; }
+  .chip.ok { color: var(--paper); }
+  .chip.stale, .chip.never { color: var(--muted); }
+  .chip.never::before { background: none; border: 1px solid currentColor; }
+
+  footer span { overflow-wrap: anywhere; }
+  footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--on-accent); padding: 0 2px; }
+  @media (prefers-color-scheme: dark) { footer { color: var(--muted); } }
+
+  @keyframes blink { 50% { opacity: 0; } }
+  @keyframes pixel { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; min-height: 0; }
+    .stage { min-height: 320px; }
+    .split { grid-template-columns: 1fr; }
+    .tiles { grid-template-columns: repeat(2, 1fr); }
+    .nav ul { order: 3; width: 100%; margin: 0; gap: 20px; }
+  }
+  @media (max-width: 520px) {
+    :root { --cut: 40px; }
+    .card { padding: 20px 18px 18px; }
+    .bar-row { grid-template-columns: 110px 1fr 2.5em; gap: 10px; }
+    .posts a, .posts span.row, .rows button, .rows .row { grid-template-columns: 2.6em 1fr auto; }
+    .nav { gap: 12px; }
+    .live .when { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="frame" id="report">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="#report">
+        <svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><rect width="8" height="8" fill="#F3EFE6"/><path d="M2 1h1v5H2zM5 1h1v5H5zM3 5h2v1H3z" fill="#0A0A0A"/></svg>
+        ubc/reporter
+      </a>
+      <ul class="label">
+        <li><a href="#report">Report</a></li>
+        <li><a href="#glance">Overview</a></li>
+        <li><a href="#archive">Archive</a></li>
+        <li><a href="#pipeline">Pipeline</a></li>
+      </ul>
+      <div class="live label"><i aria-hidden="true"></i><span id="nav-sub">r/UBC</span><span class="when muted" id="nav-when"></span></div>
+    </nav>
+
+    <section class="hero" aria-live="polite">
+      <div class="stage">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="stage-top label" id="stage-label">Weekly report</div>
+        <svg class="icon" id="icon" viewBox="0 0 11 11" shape-rendering="crispEdges" role="img" aria-label=""></svg>
+        <div class="pager" id="pager" role="tablist" aria-label="Topics"></div>
+      </div>
+      <article class="card" id="card"></article>
+    </section>
+  </div>
+
+  <div class="frame" id="glance" hidden>
+    <div class="section-head label"><span>[02] The week at a glance</span><span class="muted" id="glance-sub"></span></div>
+    <div class="section-body">
+      <div class="tiles" id="tiles"></div>
+      <div class="label muted" style="margin-top:28px">Posts per topic — select one to read its summary</div>
+      <div class="dist" id="dist"></div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="frame" id="archive">
+      <div class="section-head label"><span>[03] Archive</span><span class="muted" id="archive-sub"></span></div>
+      <div class="section-body"><ul class="rows" id="archive-list"><li><span class="row muted"><span class="n">--</span><span class="cursor">Loading</span><span></span></span></li></ul></div>
+    </div>
+    <div class="frame" id="pipeline">
+      <div class="section-head label"><span>[04] Pipeline</span><span class="muted">Last output in S3</span></div>
+      <div class="section-body"><ul class="rows" id="pipeline-list"><li><span class="row muted"><span class="n">--</span><span class="cursor">Loading</span><span></span></span></li></ul></div>
+    </div>
+  </div>
+
+  <footer class="label">
+    <span>UBC Reddit Reporter — summaries by Amazon Bedrock</span>
+    <span id="foot-meta"></span>
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip" role="presentation"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // 11x11 pixel icons, one per topic ("#" = filled)
+  const ICONS = {
+    eye: ["#.........#", ".#.......#.", "...#####...", "..#.....#..", ".#...#...#.", "#...###...#", ".#...#...#.", "..#.....#..", "...#####...", ".#.......#.", "#.........#"],
+    "Computer Science": ["###########", "#.........#", "#..#...#..#", "#.#..#..#.#", "#..#...#..#", "#.........#", "###########", "....###....", "..#######..", "...........", "..........."],
+    "Math and Statistics": ["...........", ".#########.", "..#.....#..", "...#.......", "....#......", ".....#.....", "....#......", "...#.......", "..#.....#..", ".#########.", "..........."],
+    "General Sciences": ["...#####...", "....#.#....", "....#.#....", "....#.#....", "...#...#...", "..#.....#..", ".#.#.#.#.#.", "#.#.#.#.#.#", "#.........#", ".#########.", "..........."],
+    "Arts and Humanities": ["...........", "...#####...", "..#.....#..", ".#.#..#..#.", "#.........#", "#.#.....##.", "#......#...", ".#.....#...", "..#.....##.", "...######..", "..........."],
+    "Business and Econ": [".....#.....", "...#####...", "..#..#..#..", "..#..#.....", "...####....", ".....###...", ".....#..#..", "..#..#..#..", "...#####...", ".....#.....", "..........."],
+    "General Academics": ["...........", ".####.####.", "#....#....#", "#.##.#.##.#", "#....#....#", "#.##.#.##.#", "#....#....#", "#.##.#.##.#", "#....#....#", ".####.####.", ".....#....."],
+    "Advice and Tips": ["...#####...", "..#.....#..", ".#.......#.", ".#...#...#.", ".#..#.#..#.", "..#.....#..", "...#...#...", "...#####...", "...#####...", "....###....", "..........."],
+    "Social": [".#########.", "#.........#", "#..#.#.#..#", "#.........#", "#.........#", ".#########.", "...#.......", "..#........", ".#.........", "...........", "..........."],
+    "Rants": ["......###..", ".....###...", "....###....", "...###.....", "..#######..", ".....###...", "....###....", "...###.....", "..##.......", ".#.........", "..........."],
+    "Mental Health and Wellbeing": ["...........", ".###...###.", "#...#.#...#", "#....#....#", "#.........#", ".#.......#.", "..#.....#..", "...#...#...", "....#.#....", ".....#.....", "..........."],
+    "Housing and Residence": [".....#.....", "....#.#....", "...#...#...", "..#.....#..", ".#.......#.", "###########", ".#.......#.", ".#..###..#.", ".#..#.#..#.", ".#..#.#..#.", ".#########."],
+    "Campus Spaces": [".....#.....", "....###....", "...#####...", "....###....", "...#####...", "..#######..", ".#########.", ".....#.....", ".....#.....", "...#####...", "..........."],
+    "Career": ["...........", "....###....", "...#...#...", "###########", "#.........#", "#....#....#", "###########", "#.........#", "#.........#", "###########", "..........."],
+    "Admin and Logistics": ["...#####...", ".###...###.", ".#.#####.#.", ".#.......#.", ".#.###.#.#.", ".#.......#.", ".#.#####.#.", ".#.......#.", ".#.###...#.", ".#.......#.", ".#########."],
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const state = { report: null, topics: [], index: 0, reports: [] };
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Build DOM nodes; strings are always inserted as text, never HTML
+  function el(tag, attrs, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") node.className = v;
+      else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, v === true ? "" : v);
+    }
+    for (const c of children.flat()) if (c != null) node.append(c instanceof Node ? c : String(c));
+    return node;
+  }
+  const pad = (n) => String(n).padStart(2, "0");
+  const safeUrl = (u) => (typeof u === "string" && /^https:\/\//.test(u) ? u : null);
+
+  function fmtDate(iso, opts) {
+    if (!iso) return "";
+    const d = new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso);
+    return isNaN(d) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric", ...opts });
+  }
+  function period(r) {
+    if (r && r.period_start && r.period_end) return `${fmtDate(r.period_start)} — ${fmtDate(r.period_end, { year: "numeric" })}`;
+    return r && r.id ? r.id : "";
+  }
+  function ago(iso) {
+    const s = (Date.now() - new Date(iso)) / 1000;
+    if (!isFinite(s)) return "";
+    if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m ago`;
+    if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+    return `${Math.round(s / 86400)}d ago`;
+  }
+  // "2026_10_11_2026_10_04" style ids -> readable period, for the archive list
+  function idPeriod(id) {
+    const m = /^(.+)_(\d{4})_(\d{2})_(\d{2})_(\d{4})_(\d{2})_(\d{2})$/.exec(id);
+    if (!m) return { label: id, sub: "" };
+    return { label: `${fmtDate(`${m[5]}-${m[6]}-${m[7]}`)} — ${fmtDate(`${m[2]}-${m[3]}-${m[4]}`, { year: "numeric" })}`, sub: `r/${m[1]}` };
+  }
+
+  async function api(path) {
+    const res = await fetch(path, { headers: { Accept: "application/json" } });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { status: res.status });
+    return body;
+  }
+
+  // ---------- pixel icon ----------
+  function drawIcon(name) {
+    const svg = $("icon");
+    const rows = ICONS[name] || ICONS.eye;
+    svg.replaceChildren();
+    svg.setAttribute("aria-label", `${name || "Report"} icon`);
+    svg.classList.toggle("drawing", !reducedMotion);
+    let i = 0;
+    rows.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch !== "#") return;
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute("x", x); r.setAttribute("y", y); r.setAttribute("width", 1.04); r.setAttribute("height", 1.04);
+      r.style.animationDelay = `${(x + y) * 18 + (i++ % 3) * 6}ms`;
+      svg.append(r);
+    }));
+  }
+
+  // ---------- hero card states ----------
+  function cardMessage({ headline, label, body, extra, iconName = "eye" }) {
+    drawIcon(iconName);
+    $("pager").replaceChildren();
+    $("stage-label").textContent = label;
+    $("card").replaceChildren(
+      el("h1", { class: "headline" }, headline),
+      body ? el("p", { class: "summary" }, body) : null,
+      extra || null,
+    );
+  }
+
+  function showLoading() {
+    cardMessage({ headline: el("span", { class: "cursor" }, "Loading"), label: "Weekly report" });
+  }
+
+  function showEmpty() {
+    cardMessage({
+      headline: "No report yet",
+      label: "Awaiting first run",
+      body: "The dashboard fills in once the pipeline has produced a summary. Run the four steps in order:",
+      extra: el("ol", { class: "steps" },
+        [["Fetch posts", "make invoke-reddit-fetcher-remote"], ["Classify", "make invoke-analyzer-remote"],
+         ["Summarize", "make invoke-summarizer-remote"], ["Email", "make invoke-emailer-remote"]]
+          .map(([t, cmd], i) => el("li", {}, el("span", { class: "muted" }, `[${i + 1}]`), el("span", {}, t, " — ", el("code", {}, cmd))))),
+    });
+  }
+
+  function showError(err) {
+    cardMessage({
+      headline: "Signal lost",
+      label: "API error",
+      body: `Couldn't load the report (${err.message}). Check the API Lambda logs in CloudWatch, then try again.`,
+      extra: el("button", { class: "retry label", onclick: () => loadReport() }, "Retry"),
+    });
+  }
+
+  // ---------- report ----------
+  function renderTopic() {
+    const { topics, index, report } = state;
+    const t = topics[index];
+    const share = report.total_posts ? Math.round((t.post_count / report.total_posts) * 100) : null;
+    drawIcon(t.name);
+    $("stage-label").textContent = `Topic ${pad(index + 1)} / ${pad(topics.length)}`;
+
+    $("pager").replaceChildren(...topics.map((topic, i) => el("button", {
+      role: "tab", "aria-current": String(i === index), "aria-selected": String(i === index),
+      "aria-label": `${topic.name}, ${topic.post_count} posts`, title: topic.name,
+      onclick: () => go(i),
+    }, pad(i + 1))));
+
+    const posts = (t.top_posts || []).map((p, i) => {
+      const url = safeUrl(p.url);
+      const inner = [el("span", { class: "n" }, `[${i + 1}]`), el("span", { class: "t" }, p.title),
+                     el("span", { class: "c" }, `${p.comments} ${url ? "↗" : ""}`)];
+      return el("li", {}, url ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer" }, inner) : el("span", { class: "row" }, inner));
+    });
+
+    $("card").replaceChildren(
+      el("h1", { class: "headline" }, t.name),
+      el("div", { class: "meta label muted" },
+        el("span", {}, `${t.post_count} post${t.post_count === 1 ? "" : "s"}`),
+        share != null ? el("span", {}, `${share}% of the week`) : null,
+        report.subreddit ? el("span", {}, `r/${report.subreddit}`) : null),
+      el("p", { class: "summary" }, t.summary),
+      posts.length ? el("div", { class: "label muted list-title" }, "Most discussed — comments") : null,
+      posts.length ? el("ol", { class: "posts" }, posts) : null,
+      el("div", { class: "card-foot" },
+        el("span", { class: "counter" }, String(index + 1)),
+        el("div", { class: "arrows" },
+          el("button", { "aria-label": "Previous topic", disabled: index === 0, onclick: () => go(index - 1) }, "←"),
+          el("button", { "aria-label": "Next topic", disabled: index === topics.length - 1, onclick: () => go(index + 1) }, "→")),
+        el("span", { class: "counter total" }, `/${topics.length}`)),
+    );
+
+    document.querySelectorAll(".bar-row").forEach((b, i) => b.setAttribute("aria-current", String(i === index)));
+  }
+
+  function go(i) {
+    if (!state.topics.length) return;
+    state.index = Math.max(0, Math.min(state.topics.length - 1, i));
+    renderTopic();
+  }
+
+  function renderGlance() {
+    const { report, topics } = state;
+    const top = topics[0];
+    const tile = (label, value, text) => el("div", { class: "tile" },
+      el("div", { class: "label muted" }, label), el("div", { class: `v${text ? " text" : ""}` }, value));
+    $("tiles").replaceChildren(
+      tile("Posts analysed", report.total_posts ?? topics.reduce((s, t) => s + t.post_count, 0)),
+      tile("Topics active", topics.length),
+      tile("Busiest topic", top ? top.name : "—", true),
+      tile("Unsorted posts", report.unclassified_posts ?? "—"),
+    );
+    $("glance-sub").textContent = period(report);
+
+    const max = Math.max(...topics.map((t) => t.post_count), 1);
+    const total = report.total_posts || topics.reduce((s, t) => s + t.post_count, 0);
+    $("dist").replaceChildren(...topics.map((t, i) => {
+      const tip = `${t.name} · ${t.post_count} posts · ${Math.round((t.post_count / total) * 100)}%`;
+      return el("button", {
+        class: "bar-row", "aria-label": tip, "data-tip": tip,
+        onclick: () => { go(i); $("report").scrollIntoView(); },
+      },
+        el("span", { class: "name" }, t.name),
+        el("span", { class: "track" }, el("span", { class: "fill", style: `display:block;width:${(t.post_count / max) * 100}%` })),
+        el("span", { class: "count" }, t.post_count));
+    }));
+    $("glance").hidden = false;
+  }
+
+  async function loadReport(id) {
+    showLoading();
+    try {
+      const report = await api(id ? `api/reports/${encodeURIComponent(id)}` : "api/reports/latest");
+      state.report = report;
+      state.topics = Object.entries(report.categories || {})
+        .map(([name, c]) => ({ name, ...c }))
+        .sort((a, b) => b.post_count - a.post_count);
+      state.index = 0;
+      if (!state.topics.length) return showEmpty();
+      $("nav-sub").textContent = report.subreddit ? `r/${report.subreddit}` : "r/UBC";
+      $("nav-when").textContent = report.period_end ? `· ${period(report)}` : "";
+      $("foot-meta").textContent = [report.model && `Model ${report.model}`, report.generated_at && `Generated ${fmtDate(report.generated_at, { year: "numeric" })}`].filter(Boolean).join("  ·  ");
+      renderGlance();
+      renderTopic();
+      renderArchive();
+    } catch (err) {
+      $("glance").hidden = true;
+      if (err.status === 404 && !id) showEmpty(); else showError(err);
+    }
+  }
+
+  // ---------- archive ----------
+  function renderArchive() {
+    const list = $("archive-list");
+    if (!state.reports.length) {
+      list.replaceChildren(el("li", {}, el("span", { class: "row muted" }, el("span", { class: "n" }, "--"), el("span", {}, "No reports yet"), el("span", {}))));
+      return;
+    }
+    const current = state.report && state.report.id;
+    list.replaceChildren(...state.reports.map((r, i) => {
+      const p = idPeriod(r.id);
+      return el("li", {}, el("button", {
+        "aria-current": String(r.id === current),
+        onclick: () => { loadReport(r.id); $("report").scrollIntoView(); },
+      }, el("span", { class: "n" }, `[${pad(i + 1)}]`), el("span", { class: "t" }, p.label), el("span", { class: "r" }, p.sub)));
+    }));
+    $("archive-sub").textContent = `${state.reports.length} report${state.reports.length === 1 ? "" : "s"}`;
+  }
+
+  async function loadArchive() {
+    try {
+      state.reports = (await api("api/reports")).reports || [];
+    } catch {
+      state.reports = [];
+    }
+    renderArchive();
+  }
+
+  // ---------- pipeline ----------
+  async function loadPipeline() {
+    const list = $("pipeline-list");
+    try {
+      const { steps } = await api("api/status");
+      const rows = steps.map((s, i) => {
+        const fresh = s.last_run && Date.now() - new Date(s.last_run) < 8 * 86400e3;
+        const chip = !s.last_run ? ["never", "Never ran"] : fresh ? ["ok", ago(s.last_run)] : ["stale", `Stale · ${ago(s.last_run)}`];
+        return el("li", {}, el("div", { class: "row" },
+          el("span", { class: "n" }, `[${pad(i + 1)}]`),
+          el("span", {}, s.name, el("span", { class: "muted" }, ` · ${s.files} file${s.files === 1 ? "" : "s"}`)),
+          el("span", { class: `chip ${chip[0]}` }, chip[1])));
+      });
+      rows.push(el("li", {}, el("div", { class: "row" },
+        el("span", { class: "n" }, `[${pad(steps.length + 1)}]`),
+        el("span", {}, "Emailer", el("span", { class: "muted" }, " · sends latest summary")),
+        el("span", { class: "chip never" }, "Manual"))));
+      list.replaceChildren(...rows);
+    } catch (err) {
+      list.replaceChildren(el("li", {}, el("div", { class: "row muted" }, el("span", { class: "n" }, "!!"), el("span", {}, `Status unavailable (${err.message})`), el("span", {}))));
+    }
+  }
+
+  // ---------- interaction ----------
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest("input, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "ArrowRight") go(state.index + 1);
+    if (e.key === "ArrowLeft") go(state.index - 1);
+  });
+
+  let touchX = null;
+  const hero = document.querySelector(".hero");
+  hero.addEventListener("touchstart", (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  hero.addEventListener("touchend", (e) => {
+    if (touchX == null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) go(state.index + (dx < 0 ? 1 : -1));
+    touchX = null;
+  });
+
+  const tooltip = $("tooltip");
+  document.addEventListener("pointermove", (e) => {
+    const row = e.target.closest && e.target.closest(".bar-row");
+    if (!row || e.pointerType === "touch") return tooltip.classList.remove("show");
+    tooltip.textContent = row.dataset.tip;
+    tooltip.style.left = `${e.clientX}px`;
+    tooltip.style.top = `${e.clientY}px`;
+    tooltip.classList.add("show");
+  });
+
+  loadArchive().then(() => loadReport());
+  loadPipeline();
+})();
+</script>
+</body>
+</html>

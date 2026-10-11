@@ -17,7 +17,7 @@ capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
 image_repositories = []
-parameter_overrides = "CategorizationModelId=\"meta.llama3-8b-instruct-v1:0 \" SummarizationModelId=\"meta.llama3-8b-instruct-v1:0 \" RedditFetchSchedule=\"rate(7 days)\" AnalysisSchedule=\"rate(7 days)\" EnableRedditFetchSchedule=\"true\" EnableAnalysisSchedule=\"true\" RedditClientId=\"uO49EXH_Nz2Z-Yp67Xjypg\" RedditUserAgent=\"scraper\" RedditSubreddit=\"UBC\" FromEmail=\"vvalson@student.ubc.ca\" ToEmail=\"tanav220@student.ubc.ca\" TemplateAlias=\"comment-notification\""
+parameter_overrides = "CategorizationModelId=\"meta.llama3-8b-instruct-v1:0\" SummarizationModelId=\"us.anthropic.claude-sonnet-4-5-20250929-v1:0\" RedditFetchSchedule=\"rate(7 days)\" AnalysisSchedule=\"rate(7 days)\" EnableRedditFetchSchedule=\"true\" EnableAnalysisSchedule=\"true\" RedditClientId=\"uO49EXH_Nz2Z-Yp67Xjypg\" RedditUserAgent=\"scraper\" RedditSubreddit=\"UBC\" FromEmail=\"vvalson@student.ubc.ca\" ToEmail=\"tanav220@student.ubc.ca\" TemplateAlias=\"comment-notification\""
 s3_prefix = "ubc-reddit-reporter"
 disable_rollback = true
 
@@ -34,6 +34,6 @@ warm_containers = "EAGER"
 warm_containers = "EAGER"
 
 [default.local_start_lambda.parameters.container_env_var_file]
-# Uncomment and modify the path to your .env file for local testing
-# .env
+# For local runs, copy env.example.json to env.json (git-ignored); `make invoke-*` passes it automatically
+
 

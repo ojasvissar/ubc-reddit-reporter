@@ -1,0 +1,68 @@
+{
+  "id": "UBC_2026_10_04_2026_09_27",
+  "source": "classifications/UBC_2026_10_04_2026_09_27.parquet",
+  "subreddit": "UBC",
+  "period_start": "2026-09-27",
+  "period_end": "2026-10-04",
+  "generated_at": "2026-10-04T09:11:00+00:00",
+  "model": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "total_posts": 176,
+  "unclassified_posts": 4,
+  "categories": {
+    "Housing and Residence": {
+      "post_count": 36,
+      "summary": "Move-in issues continued, with students reporting missing furniture in Exchange and asking about subletting rooms for term 2.",
+      "top_posts": [
+        {
+          "title": "Exchange room missing a desk",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 33
+        }
+      ]
+    },
+    "Social": {
+      "post_count": 30,
+      "summary": "Imagine Day follow-ups and club fair recommendations dominated, along with requests for study groups.",
+      "top_posts": [
+        {
+          "title": "Best clubs from the club fair?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 52
+        }
+      ]
+    },
+    "Computer Science": {
+      "post_count": 28,
+      "summary": "Students discussed CPSC 110 problem set difficulty and setting up WSL for CPSC 213.",
+      "top_posts": [
+        {
+          "title": "CPSC 110 PS3 is long",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 38
+        }
+      ]
+    },
+    "Admin and Logistics": {
+      "post_count": 25,
+      "summary": "Questions about tuition deadlines, U-Pass activation and course add/drop dates.",
+      "top_posts": [
+        {
+          "title": "Tuition deadline this week?",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 27
+        }
+      ]
+    },
+    "Career": {
+      "post_count": 18,
+      "summary": "Co-op round one applications opened and students shared resume tips.",
+      "top_posts": [
+        {
+          "title": "Co-op round 1 resume review thread",
+          "url": "https://www.reddit.com/r/UBC/",
+          "comments": 30
+        }
+      ]
+    }
+  }
+}

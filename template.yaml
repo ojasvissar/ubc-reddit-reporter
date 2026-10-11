@@ -8,41 +8,13 @@ Description: >
 Parameters:
   CategorizationModelId:
     Type: String
-    Default: anthropic.claude-3-sonnet-20240229-v1:0
-    Description: Bedrock model ID to use for sentiment categorization
-    AllowedValues:
-      - us.anthropic.claude-sonnet-4-5-20250929-v1:0
-      - anthropic.claude-3-sonnet-20240229-v1:0
-      - anthropic.claude-3-haiku-20240307-v1:0
-      - anthropic.claude-3-opus-20240229-v1:0
-      - anthropic.claude-v2:1
-      - anthropic.claude-v2
-      - meta.llama2-13b-chat-v1
-      - meta.llama2-70b-chat-v1
-      - meta.llama3-8b-instruct-v1:0
-      - meta.llama3-70b-instruct-v1:0
-      - amazon.titan-text-lite-v1
-      - amazon.titan-text-express-v1
-      - amazon.titan-text-agile-v1
+    Default: us.anthropic.claude-sonnet-4-5-20250929-v1:0
+    Description: Bedrock model or inference profile ID used for post categorization (any model that supports the Converse API)
 
   SummarizationModelId:
     Type: String
     Default: us.anthropic.claude-sonnet-4-5-20250929-v1:0
-    Description: Bedrock model ID to use for text summarization
-    AllowedValues:
-      - us.anthropic.claude-sonnet-4-5-20250929-v1:0
-      - anthropic.claude-3-sonnet-20240229-v1:0
-      - anthropic.claude-3-haiku-20240307-v1:0
-      - anthropic.claude-3-opus-20240229-v1:0
-      - anthropic.claude-v2:1
-      - anthropic.claude-v2
-      - meta.llama2-13b-chat-v1
-      - meta.llama2-70b-chat-v1
-      - meta.llama3-8b-instruct-v1:0
-      - meta.llama3-70b-instruct-v1:0
-      - amazon.titan-text-lite-v1
-      - amazon.titan-text-express-v1
-      - amazon.titan-text-agile-v1
+    Description: Bedrock model or inference profile ID used for per-category summarization (any model that supports the Converse API)
 
   RedditFetchSchedule:
     Type: String
@@ -112,12 +84,12 @@ Parameters:
   RedditSubreddit:
     Type: String
     Default: "UBC"
-    Description: Subreddit name to fetch posts from
+    Description: Subreddit to fetch posts from (comma-separate multiple names, e.g. "UBC,UBCO")
 
   PostmarkServerToken:
     Type: String
-    Default: "08de53bb-ab96-4839-b5b7-168a4455e475"
-    Description: Postmark server token for sending emails
+    Default: ""
+    Description: Postmark server token for sending emails (required for the emailer)
     NoEcho: true
 
   FromEmail:
@@ -134,7 +106,12 @@ Parameters:
     Type: String
     Default: "comment-notification"
     Description: Postmark template alias to use
-  
+
+  PandasLayerArn:
+    Type: String
+    Default: arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python313:16
+    Description: AWS SDK for pandas (pandas, numpy, pyarrow) layer ARN for this region
+
 Conditions:
   RedditFetchScheduleEnabled: !Equals [!Ref EnableRedditFetchSchedule, "true"]
   AnalysisScheduleEnabled: !Equals [!Ref EnableAnalysisSchedule, "true"]
@@ -224,8 +201,42 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:InvokeModelWithResponseStream
                 Resource:
-                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+                  - 'arn:aws:bedrock:*::foundation-model/*'
                   - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
+
+  # IAM Role for the dashboard API (read-only S3)
+  DashboardExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3ReadPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub '${DataBucket.Arn}/*'
+
+  # Public, read-only HTTP API for the dashboard (throttled to keep costs bounded)
+  DashboardApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
 
   # Reddit Fetcher Lambda Function
   RedditFetcherFunction:
@@ -234,17 +245,17 @@ Resources:
       CodeUri: src/
       Handler: reddit_fetcher.lambda_handler
       Role: !GetAtt RedditFetcherExecutionRole.Arn
-      Runtime: python3.11
-      Timeout: 300
+      Runtime: python3.13
+      Timeout: 900
       MemorySize: 512
       Layers:
-        - arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python311:13
+        - !Ref PandasLayerArn
       Environment:
         Variables:
           REDDIT_CLIENT_ID: !Ref RedditClientId
           REDDIT_CLIENT_SECRET: !Ref RedditClientSecret
           REDDIT_USER_AGENT: !Ref RedditUserAgent
-          REDDIT_SUBREDDIT: !Ref RedditSubreddit
+          REDDIT_SUBREDDITS: !Ref RedditSubreddit
           BUCKET_NAME: !Ref DataBucket
           LOG_LEVEL: INFO
       Events:
@@ -264,11 +275,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Layers:
-        - arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python311:13
+        - !Ref PandasLayerArn
       CodeUri: src/
       Handler: analyzer.lambda_handler
       Role: !GetAtt AnalyzerExecutionRole.Arn
-      Runtime: python3.11
+      Runtime: python3.13
       Timeout: 900
       MemorySize: 512
       Environment:
@@ -283,7 +294,7 @@ Resources:
           Properties:
             Schedule: !Ref AnalysisSchedule
             Enabled: !If [AnalysisScheduleEnabled, true, false]
-            Description: Scheduled execution for sentiment analysis
+            Description: Scheduled execution for post categorization
       Tags:
         Project: ubc-reddit-reporter
         Function: analyzer
@@ -294,11 +305,11 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Layers:
-        - arn:aws:lambda:us-west-2:336392948345:layer:AWSSDKPandas-Python311:13
+        - !Ref PandasLayerArn
       CodeUri: src/
       Handler: summarizer.lambda_handler
       Role: !GetAtt AnalyzerExecutionRole.Arn
-      Runtime: python3.11
+      Runtime: python3.13
       Timeout: 900
       MemorySize: 512
       Environment:
@@ -319,23 +330,59 @@ Resources:
       CodeUri: src/
       Handler: emailer.lambda_handler
       Role: !GetAtt RedditFetcherExecutionRole.Arn
-      Runtime: python3.11
+      Runtime: python3.13
       Timeout: 300
       MemorySize: 256
       Environment:
         Variables:
           BUCKET_NAME: !Ref DataBucket
           LOG_LEVEL: INFO
-          POSTMARK_SERVER_TOKEN: 08de53bb-ab96-4839-b5b7-168a4455e475
-          FROM_EMAIL: sender@example.com
-          TO_EMAIL: recipient@example.com
-          TEMPLATE_ALIAS: comment-notification
+          POSTMARK_SERVER_TOKEN: !Ref PostmarkServerToken
+          FROM_EMAIL: !Ref FromEmail
+          TO_EMAIL: !Ref ToEmail
+          TEMPLATE_ALIAS: !Ref TemplateAlias
+          REDDIT_SUBREDDITS: !Ref RedditSubreddit
       Tags:
         Project: ubc-reddit-reporter
         Function: emailer
         Environment: dev
 
+  # Dashboard Lambda Function (serves the web UI and report JSON)
+  DashboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: api.lambda_handler
+      Role: !GetAtt DashboardExecutionRole.Arn
+      Runtime: python3.13
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref DataBucket
+          LOG_LEVEL: INFO
+      Events:
+        Root:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /
+            Method: GET
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DashboardApi
+            Path: /{proxy+}
+            Method: GET
+      Tags:
+        Project: ubc-reddit-reporter
+        Function: dashboard
+        Environment: dev
+
 Outputs:
+  DashboardUrl:
+    Description: "Dashboard URL"
+    Value: !Sub "https://${DashboardApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/"
   RedditFetcherFunction:
     Description: "Reddit Fetcher Lambda Function ARN"
     Value: !GetAtt RedditFetcherFunction.Arn
