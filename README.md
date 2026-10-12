@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/ojasvissar/ubc-reddit-reporter/actions/workflows/ci.yml/badge.svg)](https://github.com/ojasvissar/ubc-reddit-reporter/actions/workflows/ci.yml)
 
-**A weekly briefing on what UBC students are talking about.** UBC Reddit Reporter reads every post on r/UBC, sorts each one into a topic with Amazon Bedrock, writes a summary of every topic, then emails the report and publishes it to a dashboard. It runs serverless on AWS (SAM, Lambda, S3, EventBridge, API Gateway).
+**A weekly briefing on what UBC students are actually talking about.** UBC Reddit Reporter surfaces the concerns and experiences students share on r/UBC. Every week it collects the posts, sorts each one into a topic with Amazon Bedrock, writes a summary of every topic, then emails the report as a newsletter and publishes it to a dashboard. It runs serverless on AWS (SAM, Lambda, S3, EventBridge, API Gateway).
 
-Originally built by Vinay Valson ([@Vin-dictive](https://github.com/Vin-dictive)) and Ojasv Issar for the UBC CIC GenAI Hackathon; forked from [Vin-dictive/ubc-reddit-reporter](https://github.com/Vin-dictive/ubc-reddit-reporter).
+Built at the [UBC Cloud Innovation Centre's Fall 2025 Generative AI Hackathon](https://cic.ubc.ca/2025/12/04/innovation-in-action-a-look-at-student-projects-from-the-fall-2025-hackathon/); see [Team](#team).
 
 ![Dashboard](docs/dashboard.png)
 <sub>Dashboard running locally with sample data (`make dashboard`).</sub>
@@ -97,3 +97,9 @@ template.yaml   SAM stack: 5 functions, S3 bucket, HTTP API, schedules, IAM
 ```
 
 To change the topic list, edit `prompts/classify_post.jinja`, `CATEGORIES` in `analyzer.py`, and `CATEGORY_PROMPTS` in `summarizer.py`, and add a summary prompt ending in `{{ posts }}`. The tests fail if these drift apart.
+
+## Team
+
+Built by **Tanav Bajaj, Ojasv Issar, Shreya Kakachery, Vinay Valson and Prabuddha Tamhane** at the UBC Cloud Innovation Centre's Fall 2025 Generative AI Hackathon. Read about it in [Innovation in Action: A Look at Student Projects from the Fall 2025 Hackathon](https://cic.ubc.ca/2025/12/04/innovation-in-action-a-look-at-student-projects-from-the-fall-2025-hackathon/).
+
+This repository is a fork of the original hackathon repo, [Vin-dictive/ubc-reddit-reporter](https://github.com/Vin-dictive/ubc-reddit-reporter), and continues its development.
